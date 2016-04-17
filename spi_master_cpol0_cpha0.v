@@ -1,9 +1,9 @@
 `timescale 100ns/1ns
 
-module spi_master_cpol0_cpha0(clk, rst, state, wr_en, sclk, mosi, miso, data_in, data_out, rx_done);
+module spi_master_cpol0_cpha0(clk, rst, state, go, sclk, mosi, miso, data_in, data_out, done);
 	input clk;
 	input rst;
-	input wr_en;
+	input go;
 	input [7:0] data_in;
 	input  miso;
 	output [2:0] state;
@@ -14,7 +14,7 @@ module spi_master_cpol0_cpha0(clk, rst, state, wr_en, sclk, mosi, miso, data_in,
 	
 	wire [7:0] data_out;
 	wire [2:0] state;
-	wire rx_done;
+	wire done;
 	wire sclk;
 	wire mosi;
 	
@@ -24,13 +24,13 @@ module spi_master_cpol0_cpha0(clk, rst, state, wr_en, sclk, mosi, miso, data_in,
 	reg [7:0] rx_data_q, rx_data_d;
 	reg sclk_q, sclk_d;
 	reg mosi_q, mosi_d;
-	reg rx_done_q, rx_done_d;
+	reg done_q, done_d;
 	
 	assign state = state_q;
 	assign sclk = sclk_q;
 	assign mosi = mosi_q;
 	assign data_out = rx_data_q;
-	assign rx_done = rx_done_q;
+	assign done = done_q;
 	
 	localparam
 		IDLE       = 3'h1,
@@ -45,7 +45,7 @@ module spi_master_cpol0_cpha0(clk, rst, state, wr_en, sclk, mosi, miso, data_in,
 		mosi_d = mosi_q;
 		tx_data_d = tx_data_q;
 		rx_data_d = rx_data_q;
-		rx_done_d = rx_done_q;
+		done_d = done_q;
 		
 		case (state_q)
 			
@@ -55,8 +55,8 @@ module spi_master_cpol0_cpha0(clk, rst, state, wr_en, sclk, mosi, miso, data_in,
 				counter_d = 8'h0;
 				tx_data_d = 8'h00;
 				rx_data_d = 8'h00;
-				rx_done_d = 1'b0;
-				if (wr_en == 1'b1) begin
+				done_d = 1'b0;
+				if (go == 1'b1) begin
 					tx_data_d = data_in;
 					state_d = TRANSFER_L;
 				end
@@ -82,7 +82,7 @@ module spi_master_cpol0_cpha0(clk, rst, state, wr_en, sclk, mosi, miso, data_in,
 			end
 			
 			DONE: begin
-				rx_done_d = 1'b1;
+				done_d = 1'b1;
 				sclk_d = 1'b0;
 				mosi_d = 1'b0;
 				state_d = IDLE;
@@ -96,7 +96,7 @@ module spi_master_cpol0_cpha0(clk, rst, state, wr_en, sclk, mosi, miso, data_in,
 			counter_q <= 3'h0;
 			tx_data_q <= 8'h00;
 			rx_data_q <= 8'h00;
-			rx_done_q <= 1'b0;
+			done_q <= 1'b0;
 			sclk_q <= 1'b0;
 			mosi_q <= 1'b0;
 		end else begin
@@ -104,7 +104,7 @@ module spi_master_cpol0_cpha0(clk, rst, state, wr_en, sclk, mosi, miso, data_in,
 			counter_q <= counter_d;
 			tx_data_q <= tx_data_d;
 			rx_data_q <= rx_data_d;
-			rx_done_q <= rx_done_d;
+			done_q <= rx_done_d;
 			sclk_q <= sclk_d;
 			mosi_q <= mosi_d;
 		end
