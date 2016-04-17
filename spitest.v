@@ -1,6 +1,8 @@
+`timescale 100ns/1ns
+
 module spitest(rst, sclk, mosi, miso);
     input rst;
-    input miso;
+	input miso;
     output sclk;
     output mosi;
 
@@ -9,24 +11,31 @@ module spitest(rst, sclk, mosi, miso);
     reg [2:0] state_d, state_q;
     reg [7:0] counter_d, counter_q;
 
-    wire spi_busy;
+    wire spi_done;
 
     localparam
         IDLE = 3'h1,
         SEND = 3'h2,
         WAIT = 3'h3;
-
-    spi_master_cpol0_cpha0 spi_i(
-        .clk(clk),
-        .rst(rst),
-        .sclk(sclk),
-        .mosi(mosi),
-        .miso(miso),
-        .tx_data(data_q),
-        .rx_data(),
-        .go(go_q),
-        .busy(spi_busy)
-    );
+		
+	OSCH OSCH_inst(
+		.STDBY(1'b0),
+		.OSC(clk),
+		.SEDSTDBY()
+	);
+	
+	spi_master_cpol0_cpha0 spi_i(
+		.clk(clk),
+		.rst(rst),
+		.state(),
+		.wr_en(go_q),
+		.sclk(sclk),
+		.mosi(mosi),
+		.miso(miso),
+		.data_in(data_q),
+		.data_out(),
+		.rx_done(spi_done)
+	);
 
     always @ (*) begin
         data_d = data_q;
@@ -46,7 +55,7 @@ module spitest(rst, sclk, mosi, miso);
 
             WAIT: begin
                 go_d = 1'b0;
-                if (spi_busy == 1'b0) begin
+                if (spi_done == 1'b1) begin
                     data_d = data_q + 8'h1;
                     state_d = SEND;
                 end
@@ -66,4 +75,4 @@ module spitest(rst, sclk, mosi, miso);
         end
     end
 
-endcase
+endmodule
