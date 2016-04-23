@@ -1,14 +1,13 @@
 `timescale 100ns/1ns
 
-module spi_master_cpol0_cpha0(clk, rst, state, go, sclk, mosi, miso, data_in, data_out, done);
+module spi_master_cpol0_cpha0(clk, rst, go, sclk, mosi, miso, data_in, data_out, done);
 	input clk;
 	input rst;
 	input go;
 	input [7:0] data_in;
 	input  miso;
-	output [2:0] state;
 	output [7:0] data_out;
-	output rx_done;
+	output done;
 	output sclk;
 	output mosi;
 	
@@ -26,7 +25,6 @@ module spi_master_cpol0_cpha0(clk, rst, state, go, sclk, mosi, miso, data_in, da
 	reg mosi_q, mosi_d;
 	reg done_q, done_d;
 	
-	assign state = state_q;
 	assign sclk = sclk_q;
 	assign mosi = mosi_q;
 	assign data_out = rx_data_q;
@@ -104,7 +102,7 @@ module spi_master_cpol0_cpha0(clk, rst, state, go, sclk, mosi, miso, data_in, da
 			counter_q <= counter_d;
 			tx_data_q <= tx_data_d;
 			rx_data_q <= rx_data_d;
-			done_q <= rx_done_d;
+			done_q <= done_d;
 			sclk_q <= sclk_d;
 			mosi_q <= mosi_d;
 		end

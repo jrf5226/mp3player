@@ -27,14 +27,13 @@ module spitest(rst, sclk, mosi, miso);
 	spi_master_cpol0_cpha0 spi_i(
 		.clk(clk),
 		.rst(rst),
-		.state(),
-		.wr_en(go_q),
+		.go(go_q),
 		.sclk(sclk),
 		.mosi(mosi),
 		.miso(miso),
 		.data_in(data_q),
 		.data_out(),
-		.rx_done(spi_done)
+		.done(spi_done)
 	);
 
     always @ (*) begin
