@@ -18,10 +18,14 @@ module sd_cmd_gen(clk, rst,
     output spi_cs;
 
     wire rx_data_is_response;
-    wire spi_tx_data;
+	wire cmd_has_block_data;
+    wire [7:0] spi_tx_data;
     wire spi_go;
     wire spi_cs;
     wire done;
+	wire [7:0] response;
+	wire response_ready;
+	wire data_xfer_in_progress;
 
     reg [5:0] cmd_d, cmd_q;
     reg [31:0] arg_q, arg_d;
@@ -34,11 +38,14 @@ module sd_cmd_gen(clk, rst,
     reg data_xfer_in_progress_d, data_xfer_in_progress_q;
     reg resp_ready_d, resp_ready_q;
     reg [7:0] resp_d, resp_q;
+	reg [5:0] state_d, state_q;
 
     assign spi_go = spi_go_q;
-    assign spi_tx_data = tx_data_q;
+    assign spi_tx_data = spi_tx_data_q;
     assign spi_cs = spi_cs_q;
     assign done = done_q;
+	assign data_xfer_in_progress = data_xfer_in_progress_q;
+	assign response = resp_q;
     assign response_ready = resp_ready_q;
     assign rx_data_is_response = (spi_rx_data[7] == 0);
     assign cmd_has_block_data = (cmd_q == 17);
@@ -85,7 +92,7 @@ module sd_cmd_gen(clk, rst,
         case (state_q)
             IDLE: begin
                 done_d = 1'b0;
-                spi_cs = 1'b1;
+                spi_cs_d = 1'b1;
                 if (go == 1'b1) begin
                     cmd_d = cmd;
                     arg_d = arg;
@@ -100,13 +107,13 @@ module sd_cmd_gen(clk, rst,
             end
 
             TOGGLE_CS: begin
-                spi_cs = 1'b0;
+                spi_cs_d = 1'b0;
                 state_d = SEND_CMD;
             end
 
             SEND_PULSES: begin
                 spi_tx_data_d = 8'hFF;
-                spi_g_d = 1'b1;
+                spi_go_d = 1'b1;
                 state_d = WAIT_FOR_PULSES;
             end
 
@@ -211,17 +218,9 @@ module sd_cmd_gen(clk, rst,
                 spi_go_d = 1'b0;
                 if (spi_done == 1'b1) begin
                     if (rx_data_is_response == 1'b1) begin
-                        resp_d[7:0] == spi_rx_data;
+                        resp_d[7:0] = spi_rx_data;
                         resp_ready_d = 1'b1;
                         state_d = RESPONSE_READY;
-                        if (response_has_block_data == 1'b1) begin
-                            counter_d = 16'h0;
-                            data_xfer_in_progress_d = 1'b1;
-                            state_d = RECEIVE_BLOCK1;
-                        end else begin
-                            resp_ready_d = 1'b1;
-                            state_d = RESPONSE_READY;
-                        end
                     end else begin
                         state_d = GET_RESP;
                     end
@@ -230,7 +229,7 @@ module sd_cmd_gen(clk, rst,
 
             RESPONSE_READY: begin
                 resp_ready_d = 1'b0;
-                if (response_has_block_data == 1'b1) begin
+                if (cmd_has_block_data == 1'b1) begin
                     counter_d = 16'h0;
                     state_d = RECEIVE_BLOCK1;
                 end else begin
@@ -248,6 +247,7 @@ module sd_cmd_gen(clk, rst,
                     spi_tx_data_d = 8'hFF;
                     spi_go_d = 1'b1;
                     state_d = RECEIVE_BLOCK2;
+				end
             end
 
             RECEIVE_BLOCK2: begin
@@ -266,7 +266,7 @@ module sd_cmd_gen(clk, rst,
                 data_xfer_in_progress_d = 1'b0;
                 done_d = 1'b1;
                 state_d = IDLE;
-                spi_cs = 1'b1;
+                spi_cs_d = 1'b1;
             end
 
         endcase
@@ -277,6 +277,7 @@ module sd_cmd_gen(clk, rst,
             state_q <= IDLE;
             spi_go_q <= 1'b0;
             spi_tx_data_q <= 8'h00;
+			spi_cs_q <= 1'b0;
             cmd_q <= 6'h0;
             arg_q <= 32'h0;
             counter_q <= 16'h00;
@@ -284,10 +285,12 @@ module sd_cmd_gen(clk, rst,
             data_xfer_in_progress_q <= 1'b0;
             resp_q <= 8'h00;
             resp_ready_q <= 1'b0;
+			done_q <= 1'b0;
         end else begin
             state_q <= state_d;
             spi_go_q <= spi_go_d;
             spi_tx_data_q <= spi_tx_data_d;
+			spi_cs_q <= spi_cs_d;
             cmd_q <= cmd_d;
             arg_q <= arg_d;
             counter_q <= counter_d;
@@ -295,6 +298,7 @@ module sd_cmd_gen(clk, rst,
             data_xfer_in_progress_q <= data_xfer_in_progress_d;
             resp_q <= resp_d;
             resp_ready_q <= resp_ready_d;
+			done_q <= done_d;
         end
     end
 

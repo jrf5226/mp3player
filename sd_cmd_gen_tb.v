@@ -1,6 +1,6 @@
 `timescale 100ns/1ns
 
-module sd_cmd_gen_tb.v(done, response, response_ready, data_xfer_in_progress, sclk, mosi, spi_cs);
+module sd_cmd_gen_tb(done, response, response_ready, data_xfer_in_progress, sclk, mosi, spi_cs);
     output done;
     output [7:0] response;
     output response_ready;
@@ -11,23 +11,26 @@ module sd_cmd_gen_tb.v(done, response, response_ready, data_xfer_in_progress, sc
 
     wire clk;
     reg rst;
-    reg cmd;
-    reg arg;
+    reg [5:0] cmd;
+    reg [31:0] arg;
     reg go;
-    reg ignore_count;
-    reg state;
+    reg [7:0] ignore_count;
+    reg [7:0] state;
+	reg miso;
     wire spi_go;
-    wire spi_tx_data;
-    wire spi_rx_data;
+    wire [7:0] spi_tx_data;
+    wire [7:0] spi_rx_data;
     wire spi_done;
 
     localparam
-        IDLE = 3'h1,
-        S1 = 3'h2,
-        S2 = 3'h3,
-        S3 = 3'h4,
-        S4 = 3'h5,
-        DONE = 3'h6;
+        IDLE = 8'h1,
+        S1 = 8'h2,
+        S2 = 8'h3,
+        S3 = 8'h4,
+        S4 = 8'h5,
+		S5 = 8'h6,
+		S6 = 8'h7,
+        DONE = 8'h8;
 
     OSCH OSCH_i(
         .STDBY(1'b0),
@@ -44,7 +47,7 @@ module sd_cmd_gen_tb.v(done, response, response_ready, data_xfer_in_progress, sc
         .done(spi_done),
         .sclk(sclk),
         .mosi(mosi),
-        .miso()
+        .miso(miso)
     );
 
     sd_cmd_gen sd_cmd_gen_i(
@@ -66,13 +69,16 @@ module sd_cmd_gen_tb.v(done, response, response_ready, data_xfer_in_progress, sc
     );
 
     initial begin
+		ignore_count = 8'h0;
         rst = 1'b1;
+		miso = 1'b0;
+		state = IDLE;
     end
 
     always @ (posedge clk) begin
         case (state)
             IDLE: begin
-                rst <= 1'b0;
+                rst <= 1'b1;
                 cmd <= 6'h0;
                 arg <= 32'h0;
                 go <= 1'b0;
@@ -100,17 +106,25 @@ module sd_cmd_gen_tb.v(done, response, response_ready, data_xfer_in_progress, sc
                 cmd <= cmd;
                 arg <= arg;
                 go <= 1'b0;
-                state <= S3;
+                state <= done ? S4 : S3;
             end
 
             S4: begin
                 rst <= rst;
-                cmd <= cmd;
-                arg <= arg;
-                go <= go;
-                state <= done ? DONE : S4;
+                cmd <= 6'h0;
+                arg <= 32'h0;
+                go <= 1'b1;
+                state <= S5;
             end
-
+			
+			S5: begin
+				rst <= rst;
+				cmd <= cmd;
+				arg <= arg;
+				go <= 1'b0;
+				state <= done ? DONE : S5;
+			end
+			
             DONE: begin
                 rst <= rst;
                 cmd <= cmd;
@@ -119,7 +133,8 @@ module sd_cmd_gen_tb.v(done, response, response_ready, data_xfer_in_progress, sc
                 state <= DONE;
             end
 
-        endcase
+        endcase	
+	end
 
 
 endmodule
